@@ -21,7 +21,7 @@ def kerr_identity():
     M = 0.5
     worst = max(abs(rp**2 + a**2 - rp)
                 for a in np.linspace(0, 0.9, 10) * M
-                for rp, _ in [effective_horizons(a, 0.0, ELL_0 * M, M)])
+                for rp, _, _ in [effective_horizons(a, 0.0, ELL_0 * M, M)])
     print(f"Kerr, 2M = 1: max |r+^2 + a^2 - r+| over a/M in [0, 0.9] = {worst:.1e}")
 
 
@@ -29,7 +29,7 @@ def horizon_relations(a=0.5):
     print(f"\nEffective horizons at M = 1, a = {a}")
     print(f"{'alpha':>5} | {'r+ + r-':>8} | {'r+ r-':>7} | (r+ + r-)^2 vs (2M)^2")
     for alpha in (0.0, 0.2, 0.4, 0.6, 0.8):
-        rp, rm = effective_horizons(a, alpha, ELL_0)
+        rp, rm, _ = effective_horizons(a, alpha, ELL_0)
         print(f"{alpha:5.1f} | {rp + rm:8.4f} | {rp * rm:7.4f} | "
               f"{100 * abs((rp + rm)**2 - 4) / 4:.2f}%")
 
@@ -44,7 +44,7 @@ def reduced_exponent_error(omega_M=0.5 - 0.08j, m=2):
         a = spin * M
         row = []
         for alpha in alphas:
-            rp, _ = effective_horizons(a, alpha, ELL_0 * M, M)
+            rp, _, _ = effective_horizons(a, alpha, ELL_0 * M, M)
             full = (rp**2 + a**2) * omega - a * m
             reduced = omega * rp - a * m
             row.append(100 * abs(full - reduced) / abs(full))

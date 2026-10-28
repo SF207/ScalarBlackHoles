@@ -1,11 +1,13 @@
 """
-Fig. 2: fundamental QNM frequency against spin at ell_0 = 1, for four alpha.
+Fig. 2: fundamental QNM frequency against spin at ell_0 = 1, for four alpha,
+and the Sec. III.B example of a Kerr black hole copying a hairy ringdown.
 
     python -m pipeline.qnm_vs_spin
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import brentq
 
 from physics import solve_qnm
 from .config import CF_TOLERANCE
@@ -24,6 +26,16 @@ def qnm_curve(alpha, ell_0=1.0):
             points.append((a, omega))
     a, omega = map(np.array, zip(*points))
     return a, omega
+
+
+def kerr_mimic(a=0.9, alpha=0.5, ell_0=1.0):
+    """Kerr spin with the same omega_R as the hairy black hole, and its damping."""
+    hairy, _ = solve_qnm(a=a, alpha=alpha, ell_0=ell_0)
+    a_kerr = brentq(lambda s: solve_qnm(a=s)[0].real - hairy.real, a, 0.975)
+    kerr, _ = solve_qnm(a=a_kerr)
+    print(f"Hairy (a, alpha, ell_0) = ({a}, {alpha}, {ell_0}): omega_R = {hairy.real:.6f}, "
+          f"-omega_I = {-hairy.imag:.4f}")
+    print(f"Kerr with the same omega_R: a_Kerr = {a_kerr:.3f}, -omega_I = {-kerr.imag:.4f}")
 
 
 if __name__ == "__main__":
@@ -47,3 +59,5 @@ if __name__ == "__main__":
     fig.tight_layout(pad=0.3)
     save(fig, "qnm_vs_spin.png")
     plt.close(fig)
+
+    kerr_mimic()

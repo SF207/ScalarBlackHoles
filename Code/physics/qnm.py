@@ -23,23 +23,30 @@ import qnm as kerr_qnm   # Stein's Kerr QNM package: starting guess only
 
 def effective_horizons(a, alpha, ell_0, M=1.0, tol=1e-12, max_iter=50):
     """Fixed-point iteration r+- = M +- sqrt(M^2 - a^2 - alpha r+-^2 exp(-r+-/L)),
-    seeded with the Kerr horizons."""
+    seeded with the Kerr horizons.
+
+    Returns (r_plus, r_minus, clipped). A negative radicand is clipped to 0
+    so the iteration can continue; `clipped` records that this happened, in
+    which case the QNM built on these horizons is unreliable.
+    """
     r_plus = M + np.sqrt(M**2 - a**2)
     r_minus = M - np.sqrt(M**2 - a**2)
     L = M - ell_0 / 2
     if alpha == 0 or L <= 0:
-        return r_plus, r_minus
+        return r_plus, r_minus, False
 
+    clipped = False
     for _ in range(max_iter):
-        hair_plus = alpha * r_plus**2 * np.exp(-r_plus / L)
-        hair_minus = alpha * r_minus**2 * np.exp(-r_minus / L)
-        new_plus = M + np.sqrt(max(M**2 - a**2 - hair_plus, 0))
-        new_minus = M - np.sqrt(max(M**2 - a**2 - hair_minus, 0))
+        radicand_plus = M**2 - a**2 - alpha * r_plus**2 * np.exp(-r_plus / L)
+        radicand_minus = M**2 - a**2 - alpha * r_minus**2 * np.exp(-r_minus / L)
+        clipped = clipped or radicand_plus < 0 or radicand_minus < 0
+        new_plus = M + np.sqrt(max(radicand_plus, 0))
+        new_minus = M - np.sqrt(max(radicand_minus, 0))
         converged = abs(new_plus - r_plus) < tol and abs(new_minus - r_minus) < tol
         r_plus, r_minus = new_plus, new_minus
         if converged:
             break
-    return r_plus, r_minus
+    return r_plus, r_minus, bool(clipped)
 
 
 # --- 2. Characteristic exponents ----------------------------------------------
@@ -219,7 +226,7 @@ def solve_qnm(a, alpha=0.0, ell_0=1.0, M=1.0, s=-2, l=2, m=2,
     Returns (omega, info); info["cf_residual"] = |CF(omega)| measures how well
     omega solves the characteristic equation.
     """
-    r_plus, r_minus = effective_horizons(a, alpha, ell_0, M)
+    r_plus, r_minus, clipped = effective_horizons(a, alpha, ell_0, M)
     omega_kerr = kerr_qnm.modes_cache(s=s, l=l, m=m, n=0)(a / M)[0] / M
 
     def cf(w, Lambda):
@@ -240,7 +247,7 @@ def solve_qnm(a, alpha=0.0, ell_0=1.0, M=1.0, s=-2, l=2, m=2,
 
     Lambda = angular_separation_constant(omega, a, s, l, m)
     info = {
-        "r_plus": r_plus, "r_minus": r_minus, "Lambda": Lambda,
+        "r_plus": r_plus, "r_minus": r_minus, "horizon_clipped": clipped, "Lambda": Lambda,
         "iterations": iteration, "omega_kerr": omega_kerr,
         "cf_residual": abs(cf(omega, Lambda)),
     }
